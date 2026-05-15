@@ -26,13 +26,20 @@ Both `backend-app-1` and `backend-db-1` must show `Up`. If not, run:
 cd ~/OneDrive/Documents/GitHub/backend && docker compose up -d
 ```
 
-### 2. Add missing column if needed
+### 2. Add missing columns if needed
 
-The `last_active_at` column may not exist if migrations haven't been run:
+These columns may not exist if migrations haven't been run:
 
 ```bash
-docker exec backend-db-1 psql -U postgres -d room-mates \
-  -c 'ALTER TABLE profile ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP;'
+docker exec backend-db-1 psql -U postgres -d room-mates -c "
+ALTER TABLE profile    ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP;
+ALTER TABLE reportbug  ADD COLUMN IF NOT EXISTS dismissed_at   TIMESTAMP;
+ALTER TABLE reportbug  ADD COLUMN IF NOT EXISTS dismissed_by   TEXT;
+ALTER TABLE reportuser ADD COLUMN IF NOT EXISTS dismissed_at   TIMESTAMP;
+ALTER TABLE reportuser ADD COLUMN IF NOT EXISTS dismissed_by   TEXT;
+ALTER TABLE feedback   ADD COLUMN IF NOT EXISTS dismissed_at   TIMESTAMP;
+ALTER TABLE feedback   ADD COLUMN IF NOT EXISTS dismissed_by   TEXT;
+"
 ```
 
 ### 3. Copy the latest seed file into the container
@@ -64,8 +71,8 @@ saved filters for first 15 users | 4 communities with members + messages |
 ## Notes
 
 - The seed **truncates all tables first** — run it freely, it is fully idempotent.
-- `last_active_at` is in the Drizzle schema but may be missing from the DB if
-  the migration hasn't been applied; the `ALTER TABLE … IF NOT EXISTS` in
-  step 2 is safe to run every time.
+- All `ALTER TABLE … IF NOT EXISTS` commands in step 2 are safe to run every time.
+- `last_active_at` (profile), `dismissed_at`/`dismissed_by` (reportbug, reportuser, feedback)
+  are in the Drizzle schema but may be missing if migrations haven't been applied.
 - The `saved_filters` and `roommate_details` inserts use raw SQL because the
   Drizzle schema column names differ from the live DB column names.
